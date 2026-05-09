@@ -7,10 +7,24 @@ Run with:
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (
+# QtWebEngine internally uses QQuickWidget for compositing. By default Qt 6
+# picks the platform's preferred RHI backend (Vulkan/Metal/D3D), which is
+# incompatible with QOpenGLWidget-based widgets like pyqtgraph.opengl's
+# GLViewWidget -- producing "QQuickWidget: Failed to get a QRhi" errors.
+# Force the OpenGL backend before QApplication is constructed so both the
+# WebEngine view and the GL attitude view share a single GL context.
+os.environ.setdefault("QSG_RHI_BACKEND", "opengl")
+
+from PySide6.QtCore import QCoreApplication, Qt  # noqa: E402
+from PySide6.QtQuick import QQuickWindow, QSGRendererInterface  # noqa: E402
+
+QCoreApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
+QQuickWindow.setGraphicsApi(QSGRendererInterface.OpenGL)
+
+from PySide6.QtWidgets import (  # noqa: E402
     QApplication,
     QLabel,
     QMainWindow,

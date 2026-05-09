@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <title>Ballistic GCS Map</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="leaflet/leaflet.css"/>
   <style>
     html, body, #map { height: 100%; margin: 0; padding: 0; background: #222; }
     .info {
@@ -16,7 +16,7 @@
 <body>
   <div id="map"></div>
   <div class="info" id="info">Waiting for telemetry...</div>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="leaflet/leaflet.js"></script>
   <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
   <script>
     const map = L.map('map', { zoomControl: true }).setView([0, 0], 2);
