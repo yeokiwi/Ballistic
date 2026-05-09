@@ -115,20 +115,34 @@ def _build_round(round_id: int) -> list[gl.GLMeshItem]:
     return items
 
 
-def quat_to_matrix4(q_w: float, q_x: float, q_y: float, q_z: float) -> QMatrix4x4:
-    """Hamilton (w, x, y, z) body->NED quaternion -> QMatrix4x4 column-major."""
+def quat_to_matrix4_enu(q_w: float, q_x: float, q_y: float, q_z: float) -> QMatrix4x4:
+    """body->NED quaternion -> body->ENU rotation as a QMatrix4x4.
+
+    The scene uses a right-handed ENU frame so that +z is visually "up".
+    The mapping NED (N, E, D) -> ENU (E, N, U) is the rotation
+        M = [[0, 1, 0], [1, 0, 0], [0, 0, -1]]   (det = +1)
+    so we return M @ R(q) where R(q) is the body->NED rotation.
+    """
     n = (q_w * q_w + q_x * q_x + q_y * q_y + q_z * q_z) ** 0.5
     if n < 1e-9:
         return QMatrix4x4()
     w, x, y, z = q_w / n, q_x / n, q_y / n, q_z / n
     xx, yy, zz = x * x, y * y, z * z
-    m = QMatrix4x4(
-        1.0 - 2.0 * (yy + zz), 2.0 * (x * y - z * w), 2.0 * (x * z + y * w), 0.0,
-        2.0 * (x * y + z * w), 1.0 - 2.0 * (xx + zz), 2.0 * (y * z - x * w), 0.0,
-        2.0 * (x * z - y * w), 2.0 * (y * z + x * w), 1.0 - 2.0 * (xx + yy), 0.0,
-        0.0,                    0.0,                    0.0,                    1.0,
+    # body->NED rotation rows
+    r00 = 1.0 - 2.0 * (yy + zz); r01 = 2.0 * (x * y - z * w); r02 = 2.0 * (x * z + y * w)
+    r10 = 2.0 * (x * y + z * w); r11 = 1.0 - 2.0 * (xx + zz); r12 = 2.0 * (y * z - x * w)
+    r20 = 2.0 * (x * z - y * w); r21 = 2.0 * (y * z + x * w); r22 = 1.0 - 2.0 * (xx + yy)
+    # ENU rows: row0 = NED row1 (East), row1 = NED row0 (North), row2 = -NED row2 (Up)
+    return QMatrix4x4(
+        r10,  r11,  r12,  0.0,
+        r00,  r01,  r02,  0.0,
+        -r20, -r21, -r22, 0.0,
+        0.0,  0.0,  0.0,  1.0,
     )
-    return m
+
+
+# Back-compat alias used by tests/external callers.
+quat_to_matrix4 = quat_to_matrix4_enu
 
 
 class AttitudeView(gl.GLViewWidget):
@@ -137,10 +151,13 @@ class AttitudeView(gl.GLViewWidget):
         self.setCameraPosition(distance=4.0, azimuth=30, elevation=20)
         self.setBackgroundColor((20, 20, 28))
 
-        # NED axis triad: N=red(+x), E=green(+y), D=blue(+z)
-        self._add_axis([0, 0, 0], [1, 0, 0], (1, 0, 0, 1))
-        self._add_axis([0, 0, 0], [0, 1, 0], (0, 1, 0, 1))
-        self._add_axis([0, 0, 0], [0, 0, 1], (0, 0, 1, 1))
+        # ENU axis triad (so visual "up" is genuinely up):
+        #   +x  East  (green)
+        #   +y  North (red)
+        #   +z  Up    (blue)
+        self._add_axis([0, 0, 0], [1, 0, 0], (0.2, 1.0, 0.2, 1))
+        self._add_axis([0, 0, 0], [0, 1, 0], (1.0, 0.2, 0.2, 1))
+        self._add_axis([0, 0, 0], [0, 0, 1], (0.3, 0.5, 1.0, 1))
 
         grid = gl.GLGridItem()
         grid.setSize(4, 4)
@@ -168,7 +185,7 @@ class AttitudeView(gl.GLViewWidget):
     def update_attitude(self, round_id: int, q_w: float, q_x: float,
                         q_y: float, q_z: float) -> None:
         self._set_round(round_id)
-        m = quat_to_matrix4(q_w, q_x, q_y, q_z)
+        m = quat_to_matrix4_enu(q_w, q_x, q_y, q_z)
         for it in self._round_items:
             # Build per-item transform: rotation * existing local translation
             local = QMatrix4x4(it.transform())
