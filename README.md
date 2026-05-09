@@ -3,8 +3,9 @@
 A Python 6DOF ballistic-round simulator paired with a PySide6 desktop ground
 control station (GCS). The simulator integrates rigid-body equations of
 motion in the ECEF rotating frame and streams real-time position/attitude
-telemetry over UDP. The GCS draws the round on a Leaflet map and shows its
-attitude in a live 3D view.
+telemetry over UDP. The GCS draws the trajectory in 3D (ENU around the
+launch site, with a ground grid) and shows the round body's attitude in a
+second 3D view.
 
 Three rounds are built in:
 
@@ -49,11 +50,14 @@ python -m ballistic.sim.main \
     --host 127.0.0.1 --port 51000
 ```
 
-The map pans to the launch point, draws the launch as a yellow dot, and
-streams a cyan trail behind a red round marker. The 3D pane on the right
-shows the round body oriented in the local NED frame (red = North,
-green = East, blue = Down). The status bar shows TOF, altitude, speed
-and phase.
+The left pane shows the trajectory in 3D in a local ENU frame anchored at
+the launch site: the launch is a yellow dot at the origin, the round is
+red, the trail is cyan, and an orange drop-line tracks straight down to
+the ground grid. Mouse: left-drag orbits the camera, mid-drag (or
+shift-drag) pans, the wheel zooms. The right pane shows the round body's
+attitude in the same ENU convention (green = East, red = North,
+blue = Up). The status bar shows TOF, altitude, ground offset, speed and
+phase.
 
 ### CLI options (simulator)
 
@@ -104,10 +108,9 @@ ballistic/
     main.py            simulator CLI
   gcs/
     udp_listener.py    QThread receiving telemetry
-    map_view.py        QWebEngineView wrapping leaflet.html via QWebChannel
-    leaflet.html       Leaflet map page (marker + polyline trail)
-    attitude_view.py   pyqtgraph.opengl 3D body view (NED axes)
-    main.py            MainWindow (map | 3D | status)
+    trajectory_view.py pyqtgraph.opengl 3D trail in local ENU + ground grid
+    attitude_view.py   pyqtgraph.opengl 3D body view (ENU axes)
+    main.py            MainWindow (trajectory | attitude | status)
 tests/                 pytest suite (earth/aero/dynamics/packet)
 ```
 
